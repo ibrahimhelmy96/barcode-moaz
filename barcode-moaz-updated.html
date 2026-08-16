@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>طباعة باركود الصيدلية</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Tahoma,Arial,sans-serif;background:#f3f5f7;color:#17202a}
+.container{max-width:900px;margin:auto;padding:18px}.card{background:#fff;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 2px 12px #0000000f}
+h1{margin:0 0 6px;font-size:27px}.subtitle,.hint{color:#667085;line-height:1.7;font-size:14px}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input[type=file]{width:100%;padding:12px;border:1px dashed #98a2b3;border-radius:10px;background:#fafafa}
+input[type=text]{flex:1;min-width:220px;padding:13px;border:1px solid #cfd5dc;border-radius:10px;font-size:17px;direction:ltr}
+button{border:0;border-radius:10px;padding:12px 18px;font-size:16px;cursor:pointer;background:#1769e0;color:white}
+button.success{background:#16834b}button.secondary{background:#667085}button.danger{background:#c62828}button:disabled{opacity:.5;cursor:not-allowed}
+.status{margin-top:10px;padding:10px 12px;border-radius:9px;background:#eef4ff;color:#2456a6}.stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.stat{background:#f5f7fa;border-radius:9px;padding:9px 13px}
+.product{display:none;border:2px solid #d9e2ec;border-radius:14px;padding:18px;margin-top:15px}.product.show{display:block}
+.product-name{font-size:24px;font-weight:700;line-height:1.5}.product-meta{color:#667085;font-size:14px;margin:3px 0 8px}.price{font-size:30px;font-weight:800;margin:8px 0 12px}.tax-note{font-size:13px;font-weight:400;color:#667085;margin-right:5px}
+.barcode-wrap{text-align:center;padding:8px}#barcodePreview{max-width:100%;height:42px}.code-text{direction:ltr;font:15px monospace}
+#reader{width:100%;max-width:520px;margin:15px auto;display:none}.duplicate-list{margin-top:10px;display:none}.duplicate-item{display:block;width:100%;text-align:right;margin:7px 0;background:#f5f7fa;color:#17202a;border:1px solid #d8dee6}
+.queue-item{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #eaecf0}.queue-info{min-width:0;flex:1}.queue-name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.queue-code{direction:ltr;font:12px monospace;color:#667085}.queue-remove{padding:7px 10px;font-size:13px;background:#c62828}.empty-queue{color:#667085;padding:12px 0}.site-credit{text-align:center;color:#667085;font-size:11px;margin:10px 0 18px}
+#printArea{display:none}
+@media print{
+ @page{size:80mm auto;margin:0}
+ html,body{width:80mm;margin:0;padding:0;background:#fff}
+ body>*{display:none!important}#printArea{display:block!important;width:72mm;margin:auto;padding:2mm 0;text-align:center;direction:rtl;font-family:Tahoma,Arial,sans-serif}
+ .print-label{width:72mm;margin:auto;padding:2mm 0;page-break-after:always;break-after:page}
+ .p-name{font-size:14px;font-weight:700;line-height:1.2;max-height:10mm;overflow:hidden}
+ .p-ref{font-size:9px;margin-top:.5mm}.p-price{font-size:17px;font-weight:800;margin:.8mm 0}.p-tax{font-size:8px;font-weight:400;margin-right:1mm}
+ .p-barcode{width:34mm!important;max-height:10mm}.p-code{direction:ltr;font:8px monospace}.p-credit{font-size:7px;margin-top:.5mm}
+}
+</style>
+</head>
+<body>
+<main class="container">
+<div class="card">
+<h1>🏷️ طباعة باركود الصيدلية</h1>
+<div class="subtitle">ارفع مخزون Excel ثم امسح الباركود أو QR Code.</div>
+<input id="excelFile" type="file" accept=".xlsx,.xls,.csv">
+<div id="status" class="status">لم يتم تحميل ملف المخزون بعد.</div><div id="stats" class="stats"></div>
+</div>
+
+<div class="card">
+<h2>🔎 البحث / قراءة الكود</h2>
+<div class="row">
+<input id="codeInput" type="text" placeholder="امسح الباركود بالماسح أو اكتب الرقم هنا">
+<button id="searchBtn">بحث</button><button id="scanBtn" class="success">📷 فتح الكاميرا</button>
+</div>
+<div class="hint">يمكنك استخدام Barcode Scanner USB أو كاميرا الكمبيوتر/الموبايل. عند استخدام الكاميرا ستظل مفتوحة لاستقبال عدة أكواد متتالية.</div>
+<div id="reader"></div>
+<div id="productCard" class="product">
+<div id="productName" class="product-name"></div><div id="productRef" class="product-meta"></div>
+<div id="productPrice" class="price"></div>
+<div class="barcode-wrap"><svg id="barcodePreview"></svg><div id="codeText" class="code-text"></div></div>
+<div class="row"><button id="printBtn" class="success">🖨️ طباعة الحالي</button><button id="clearBtn" class="secondary">مسح</button></div>
+</div><div id="duplicates" class="duplicate-list"></div>
+</div>
+
+<div class="card">
+<div class="row" style="justify-content:space-between"><h2 style="margin:0">🧾 قائمة الطباعة</h2><button id="printAllBtn" class="success" disabled>🖨️ طباعة الكل</button></div>
+<div class="hint">امسح عدة باركودات واحدًا وراء الآخر. كل قراءة ناجحة تُضاف للقائمة، ثم اضغط «طباعة الكل».</div>
+<div id="queueList"></div><button id="clearQueueBtn" class="danger" disabled>مسح قائمة الطباعة</button>
+</div>
+<div class="site-credit">إبراهيم حلمي — صيدلية معاذ</div>
+</main>
+<div id="printArea"></div>
+
+<script>
+let inventory=[],currentProduct=null,printQueue=[],scanner=null;
+const $=id=>document.getElementById(id);
+function setStatus(m,t="info"){ $("status").textContent=m;$("status").style.background=t==="error"?"#fff0f0":t==="success"?"#edf9f1":"#eef4ff";$("status").style.color=t==="error"?"#a61b1b":t==="success"?"#126b3c":"#2456a6"; }
+function norm(v){return v==null?"":String(v).trim().replace(/\.0$/,"")}
+function esc(v){return String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;")}
+function col(headers,names){let h=headers.map(x=>norm(x).toLowerCase());for(let n of names){let i=h.indexOf(n.toLowerCase());if(i>=0)return i}return -1}
+function headerRow(rows){for(let i=0;i<Math.min(rows.length,30);i++){let a=rows[i].map(norm);if(a.some(x=>x.toLowerCase()==="product barcode")&&a.some(x=>x.toLowerCase()==="product name"))return i}return -1}
+
+$("excelFile").onchange=async e=>{
+ let f=e.target.files[0];if(!f)return;setStatus("جاري قراءة ملف Excel...");
+ try{
+  let wb=XLSX.read(await f.arrayBuffer(),{type:"array"}),sn=wb.SheetNames[0],rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:""}),hr=headerRow(rows);
+  if(hr<0)throw Error("لم أجد Product Barcode و Product Name.");
+  let heads=rows[hr].map(norm),bc=col(heads,["Product Barcode"]),nm=col(heads,["Product Name"]),pr=col(heads,["Sales Price"]),qt=col(heads,["QoH"]),rf=col(heads,["Product Ref"]);
+  inventory=[];
+  for(let i=hr+1;i<rows.length;i++){let r=rows[i],barcode=norm(r[bc]),name=norm(r[nm]);if(barcode&&name)inventory.push({barcode,name,price:pr>=0?norm(r[pr]):"",qty:qt>=0?norm(r[qt]):"",ref:rf>=0?norm(r[rf]):""})}
+  localStorage.setItem("pharmacyInventory",JSON.stringify(inventory));
+  $("stats").innerHTML='<div class="stat">📦 الأصناف ذات الباركود: <b>'+inventory.length.toLocaleString()+'</b></div><div class="stat">📄 الورقة: <b>'+esc(sn)+'</b></div>';
+  setStatus("تم تحميل المخزون بنجاح: "+inventory.length.toLocaleString()+" صنف.","success");
+ }catch(err){setStatus("حصل خطأ أثناء قراءة الملف: "+err.message,"error")}
+};
+
+function showProduct(x){currentProduct=x;$("productName").textContent=x.name;$("productRef").textContent=x.ref?"الكود: "+x.ref:"";$("productPrice").innerHTML=x.price?esc(x.price)+' <span class="tax-note">شامل الضريبة</span>':"السعر غير موجود";$("codeText").textContent=x.barcode;$("productCard").classList.add("show");draw("barcodePreview",x.barcode);setStatus("تم العثور على: "+x.name,"success")}
+function draw(id,v){let el=$(id);el.innerHTML="";let fmt=/^\d{13}$/.test(v)?"EAN13":/^\d{8}$/.test(v)?"EAN8":/^\d{12}$/.test(v)?"UPC":"CODE128";try{JsBarcode(el,v,{format:fmt,displayValue:false,margin:2,height:28,width:1})}catch(e){JsBarcode(el,v,{format:"CODE128",displayValue:false,margin:2,height:28,width:1})}}
+function addQueue(x){printQueue.push({...x});renderQueue()}
+function searchCode(code){code=norm(code);if(!code)return;let m=inventory.filter(x=>x.barcode===code);$("duplicates").style.display="none";$("duplicates").innerHTML="";if(!m.length){$("productCard").classList.remove("show");setStatus("لم يتم العثور على باركود: "+code,"error");return}if(m.length>1){$("duplicates").style.display="block";$("duplicates").innerHTML="<b>⚠️ يوجد أكثر من صنف بنفس الباركود:</b>";m.forEach((x,i)=>{let b=document.createElement("button");b.className="duplicate-item";b.textContent=(i+1)+") "+x.name+" — "+(x.price||"-")+" ريال";b.onclick=()=>{showProduct(x);addQueue(x)};$("duplicates").appendChild(b)})}showProduct(m[0]);addQueue(m[0])}
+
+function renderQueue(){let l=$("queueList");if(!printQueue.length){l.innerHTML='<div class="empty-queue">لا توجد أصناف في قائمة الطباعة.</div>';$("printAllBtn").disabled=$("clearQueueBtn").disabled=true;return}$("printAllBtn").disabled=$("clearQueueBtn").disabled=false;l.innerHTML="";printQueue.forEach((x,i)=>{let d=document.createElement("div");d.className="queue-item";let info=document.createElement("div");info.className="queue-info";info.innerHTML='<div class="queue-name">'+esc(x.name)+'</div><div class="queue-code">'+esc(x.barcode)+(x.ref?" — Ref: "+esc(x.ref):"")+'</div>';let b=document.createElement("button");b.className="queue-remove";b.textContent="حذف";b.onclick=()=>{printQueue.splice(i,1);renderQueue()};d.append(info,b);l.appendChild(d)})}
+function makeLabel(x){let d=document.createElement("div");d.className="print-label";let n=document.createElement("div");n.className="p-name";n.textContent=x.name;let r=document.createElement("div");r.className="p-ref";r.textContent=x.ref?"الكود: "+x.ref:"";let p=document.createElement("div");p.className="p-price";p.innerHTML=x.price?esc(x.price)+' <span class="p-tax">شامل الضريبة</span>':"";let s=document.createElementNS("http://www.w3.org/2000/svg","svg");s.classList.add("p-barcode");let c=document.createElement("div");c.className="p-code";c.textContent=x.barcode;let cr=document.createElement("div");cr.className="p-credit";cr.textContent="إبراهيم حلمي — صيدلية معاذ";d.append(n,r,p,s,c,cr);drawSvg(s,x.barcode);return d}
+function drawSvg(el,v){let fmt=/^\d{13}$/.test(v)?"EAN13":/^\d{8}$/.test(v)?"EAN8":/^\d{12}$/.test(v)?"UPC":"CODE128";try{JsBarcode(el,v,{format:fmt,displayValue:false,margin:1,height:28,width:1})}catch(e){JsBarcode(el,v,{format:"CODE128",displayValue:false,margin:1,height:28,width:1})}}
+function printItems(items){if(!items.length)return;$("printArea").innerHTML="";items.forEach(x=>$("printArea").appendChild(makeLabel(x)));setTimeout(()=>window.print(),250)}
+
+$("searchBtn").onclick=()=>searchCode($("codeInput").value);
+$("codeInput").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();searchCode($("codeInput").value)}};
+$("clearBtn").onclick=()=>{$("codeInput").value="";$("productCard").classList.remove("show");setStatus("جاهز لقراءة باركود جديد.");$("codeInput").focus()};
+$("printBtn").onclick=()=>currentProduct&&printItems([currentProduct]);
+$("printAllBtn").onclick=()=>printItems(printQueue);
+$("clearQueueBtn").onclick=()=>{printQueue=[];renderQueue();setStatus("تم مسح قائمة الطباعة.")};
+
+async function startScanner(){if(scanner)return;$("reader").style.display="block";$("scanBtn").disabled=true;$("scanBtn").textContent="📷 الكاميرا تعمل...";scanner=new Html5Qrcode("reader");try{await scanner.start({facingMode:"environment"},{fps:10,qrbox:{width:280,height:160}},decoded=>{$("codeInput").value=decoded;searchCode(decoded)},()=>{})}catch(e){setStatus("تعذر تشغيل الكاميرا. اسمح للمتصفح باستخدامها وتأكد أن الموقع HTTPS.","error");stopScanner()}}
+async function stopScanner(){if(!scanner)return;try{await scanner.stop();await scanner.clear()}catch(e){}scanner=null;$("reader").style.display="none";$("scanBtn").disabled=false;$("scanBtn").textContent="📷 فتح الكاميرا"}
+$("scanBtn").onclick=()=>scanner?stopScanner():startScanner();
+renderQueue();
+window.addEventListener("load",()=>{try{let s=localStorage.getItem("pharmacyInventory");if(s){inventory=JSON.parse(s);$("stats").innerHTML='<div class="stat">📦 مخزون محفوظ: <b>'+inventory.length.toLocaleString()+'</b> صنف</div>';setStatus("تم استرجاع آخر ملف مخزون محفوظ.","success")}}catch(e){}});
+</script>
+</body>
+</html>
