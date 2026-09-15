@@ -127,9 +127,17 @@ let selectedProduct = null;
 let html5QrCode = null;
 let fuse = null;
 
+// توحيد البحث وقراءة الحقول بغض النظر عن اختلاف أسماء الأعمدة في ملف الإكسل
+function getProp(obj, keys) {
+  for (let k of keys) {
+    if (obj[k] !== undefined && obj[k] !== null) return obj[k];
+  }
+  return '';
+}
+
 function initFuse() {
   fuse = new Fuse(database, {
-    keys: ['Product Name', 'Product Barcode'],
+    keys: ['Product Name', 'Product Barcode', 'Product Ref'],
     threshold: 0.4,
     distance: 100
   });
@@ -178,9 +186,15 @@ function renderTable() {
 
 function selectProduct(product) {
   selectedProduct = product;
-  document.getElementById('productInfo').innerHTML = `<b>${product['Product Name']}</b><br>الباركود: ${product['Product Barcode']} | السعر: ${product['Sales Price'] || 0} | الكمية بالسيستم: ${product['QoH'] || 0}`;
+  const pName = getProp(product, ['Product Name', 'Name', 'اسم الصنف', 'المنتج']);
+  const pCode = getProp(product, ['Product Barcode', 'Barcode', 'الباركود']);
+  const pRef = getProp(product, ['Product Ref', 'Ref', 'كود الصنف', 'المرجع']);
+  const pPrice = getProp(product, ['Sales Price', 'Price', 'السعر', 'سعر البيع']);
+  const pQoh = parseFloat(getProp(product, ['QoH', 'Quantity', 'الكمية', 'الرصيد'])) || 0;
+
+  document.getElementById('productInfo').innerHTML = `<b>${pName}</b><br>Ref: ${pRef} | السعر: ${pPrice} | السيستم: ${pQoh}`;
   document.getElementById('countArea').classList.remove('hidden');
-  document.getElementById('actual').value = (inventory[product['Product Barcode']] ? inventory[product['Product Barcode']].actual : (product['QoH'] || 0));
+  document.getElementById('actual').value = (inventory[pCode] ? inventory[pCode].actual : pQoh);
   document.getElementById('dropdown').classList.add('hidden');
   document.getElementById('actual').focus();
 }
@@ -215,7 +229,9 @@ document.getElementById('search').addEventListener('input', (e) => {
     results.slice(0, 8).forEach(res => {
       const div = document.createElement('div');
       div.className = 'search-item';
-      div.innerText = `${res.item['Product Name']} (${res.item['Product Barcode']})`;
+      const pName = getProp(res.item, ['Product Name', 'Name', 'اسم الصنف']);
+      const pCode = getProp(res.item, ['Product Barcode', 'Barcode', 'الباركود']);
+      div.innerText = `${pName} (${pCode})`;
       div.onclick = () => selectProduct(res.item);
       dropdown.appendChild(div);
     });
@@ -226,7 +242,7 @@ document.getElementById('search').addEventListener('input', (e) => {
 
 document.getElementById('barcode').addEventListener('change', (e) => {
   const code = e.target.value.trim();
-  const prod = database.find(p => String(p['Product Barcode']) === code);
+  const prod = database.find(p => String(getProp(p, ['Product Barcode', 'Barcode', 'الباركود'])) === code);
   if(prod) {
     selectProduct(prod);
   } else {
@@ -237,14 +253,22 @@ document.getElementById('barcode').addEventListener('change', (e) => {
 
 document.getElementById('addBtn').onclick = () => {
   if(!selectedProduct) return;
+  
+  const pCode = getProp(selectedProduct, ['Product Barcode', 'Barcode', 'الباركود']);
+  const pRef = getProp(selectedProduct, ['Product Ref', 'Ref', 'كود الصنف']);
+  const pName = getProp(selectedProduct, ['Product Name', 'Name', 'اسم الصنف']);
+  const pPrice = getProp(selectedProduct, ['Sales Price', 'Price', 'السعر']);
+  const pQoh = parseFloat(getProp(selectedProduct, ['QoH', 'Quantity', 'الكمية'])) || 0;
   const actualVal = parseFloat(document.getElementById('actual').value) || 0;
-  inventory[selectedProduct['Product Barcode']] = {
-    ref: selectedProduct['Product Ref'] || '',
-    name: selectedProduct['Product Name'],
-    price: selectedProduct['Sales Price'] || 0,
-    system: selectedProduct['QoH'] || 0,
+
+  inventory[pCode] = {
+    ref: pRef,
+    name: pName,
+    price: pPrice,
+    system: pQoh,
     actual: actualVal
   };
+
   renderTable();
   document.getElementById('countArea').classList.add('hidden');
   document.getElementById('productInfo').innerText = 'تم حفظ الجرد بنجاح!';
@@ -263,7 +287,7 @@ window.deleteItem = function(barcode) {
 };
 
 window.editItem = function(barcode) {
-  const prod = database.find(p => String(p['Product Barcode']) === barcode);
+  const prod = database.find(p => String(getProp(p, ['Product Barcode', 'Barcode', 'الباركود'])) === barcode);
   if(prod) selectProduct(prod);
 };
 
@@ -281,7 +305,7 @@ document.getElementById('cameraBtn').onclick = () => {
     { facingMode: "environment" }, 
     config, 
     (decodedText) => {
-      const prod = database.find(p => String(p['Product Barcode']) === decodedText);
+      const prod = database.find(p => String(getProp(p, ['Product Barcode', 'Barcode', 'الباركود'])) === decodedText);
       if(prod) {
         selectProduct(prod);
       } else {
@@ -302,7 +326,7 @@ document.getElementById('stopBtn').onclick = () => {
   }
 };
 
-// التعديل هنا لتصدير Product Ref و Sales Price بدلاً من الباركود
+// تصدير الخانات المطلوبة بالدقة
 document.getElementById('exportBtn').onclick = () => {
   const data = Object.keys(inventory).map(barcode => ({
     'Product Ref': inventory[barcode].ref,
