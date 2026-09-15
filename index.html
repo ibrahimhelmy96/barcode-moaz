@@ -14,7 +14,7 @@ header{background:#0f766e;color:white;padding:18px 16px;position:sticky;top:0;z-
 h1{font-size:22px;margin:0 0 2px}
 .sub{opacity:.9;font-size:13px}
 .doctor-name{font-size:14px;font-weight:normal;opacity:.95;margin-top:2px}
-main{max-width:900px;margin:auto;padding:14px}
+main{max-width:950px;margin:auto;padding:14px}
 .card{background:white;border-radius:16px;padding:15px;margin-bottom:14px;box-shadow:0 2px 12px #00000010}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 .row>*{flex:1;min-width:140px}
@@ -106,8 +106,9 @@ th,td{padding:9px;border-bottom:1px solid #e5e7eb;text-align:right}
     <table>
       <thead>
         <tr>
-          <th>الباركود</th>
+          <th>Ref</th>
           <th>الصنف</th>
+          <th>السعر</th>
           <th>السيستم</th>
           <th>الفعلي</th>
           <th>الفرق</th>
@@ -127,17 +128,22 @@ let selectedProduct = null;
 let html5QrCode = null;
 let fuse = null;
 
-// توحيد البحث وقراءة الحقول بغض النظر عن اختلاف أسماء الأعمدة في ملف الإكسل
-function getProp(obj, keys) {
-  for (let k of keys) {
-    if (obj[k] !== undefined && obj[k] !== null) return obj[k];
+// دالة ذكية للبحث عن أي حقل بغض النظر عن المسافات أو حالة الأحرف
+function findVal(obj, patterns) {
+  if (!obj) return '';
+  const keys = Object.keys(obj);
+  for (let p of patterns) {
+    const matchedKey = keys.find(k => k.trim().toLowerCase() === p.toLowerCase());
+    if (matchedKey && obj[matchedKey] !== undefined && obj[matchedKey] !== null) {
+      return obj[matchedKey];
+    }
   }
   return '';
 }
 
 function initFuse() {
   fuse = new Fuse(database, {
-    keys: ['Product Name', 'Product Barcode', 'Product Ref'],
+    keys: Object.keys(database[0] || {}),
     threshold: 0.4,
     distance: 100
   });
@@ -169,8 +175,9 @@ function renderTable() {
     const diff = item.actual - item.system;
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${barcode}</td>
+      <td>${item.ref || '-'}</td>
       <td>${item.name}</td>
+      <td>${item.price || 0}</td>
       <td>${item.system}</td>
       <td>${item.actual}</td>
       <td class="${diff < 0 ? 'short' : (diff > 0 ? 'over' : '')}">${diff}</td>
@@ -186,13 +193,13 @@ function renderTable() {
 
 function selectProduct(product) {
   selectedProduct = product;
-  const pName = getProp(product, ['Product Name', 'Name', 'اسم الصنف', 'المنتج']);
-  const pCode = getProp(product, ['Product Barcode', 'Barcode', 'الباركود']);
-  const pRef = getProp(product, ['Product Ref', 'Ref', 'كود الصنف', 'المرجع']);
-  const pPrice = getProp(product, ['Sales Price', 'Price', 'السعر', 'سعر البيع']);
-  const pQoh = parseFloat(getProp(product, ['QoH', 'Quantity', 'الكمية', 'الرصيد'])) || 0;
+  const pName = findVal(product, ['Product Name', 'Name', 'اسم الصنف', 'اسم المنتج', 'الصنف']);
+  const pCode = findVal(product, ['Product Barcode', 'Barcode', 'الباركود', 'باركود']);
+  const pRef = findVal(product, ['Product Ref', 'Ref', 'كود الصنف', 'المرجع', 'كود']);
+  const pPrice = findVal(product, ['Sales Price', 'Price', 'السعر', 'سعر البيع', 'سعر']);
+  const pQoh = parseFloat(findVal(product, ['QoH', 'Quantity', 'الكمية', 'الرصيد'])) || 0;
 
-  document.getElementById('productInfo').innerHTML = `<b>${pName}</b><br>Ref: ${pRef} | السعر: ${pPrice} | السيستم: ${pQoh}`;
+  document.getElementById('productInfo').innerHTML = `<b>${pName}</b><br>Product Ref: <b>${pRef || 'غير محدد'}</b> | السعر: <b>${pPrice || 0}</b> | السيستم: ${pQoh}`;
   document.getElementById('countArea').classList.remove('hidden');
   document.getElementById('actual').value = (inventory[pCode] ? inventory[pCode].actual : pQoh);
   document.getElementById('dropdown').classList.add('hidden');
@@ -229,8 +236,8 @@ document.getElementById('search').addEventListener('input', (e) => {
     results.slice(0, 8).forEach(res => {
       const div = document.createElement('div');
       div.className = 'search-item';
-      const pName = getProp(res.item, ['Product Name', 'Name', 'اسم الصنف']);
-      const pCode = getProp(res.item, ['Product Barcode', 'Barcode', 'الباركود']);
+      const pName = findVal(res.item, ['Product Name', 'Name', 'اسم الصنف', 'الصنف']);
+      const pCode = findVal(res.item, ['Product Barcode', 'Barcode', 'الباركود']);
       div.innerText = `${pName} (${pCode})`;
       div.onclick = () => selectProduct(res.item);
       dropdown.appendChild(div);
@@ -242,7 +249,7 @@ document.getElementById('search').addEventListener('input', (e) => {
 
 document.getElementById('barcode').addEventListener('change', (e) => {
   const code = e.target.value.trim();
-  const prod = database.find(p => String(getProp(p, ['Product Barcode', 'Barcode', 'الباركود'])) === code);
+  const prod = database.find(p => String(findVal(p, ['Product Barcode', 'Barcode', 'الباركود'])) === code);
   if(prod) {
     selectProduct(prod);
   } else {
@@ -254,11 +261,11 @@ document.getElementById('barcode').addEventListener('change', (e) => {
 document.getElementById('addBtn').onclick = () => {
   if(!selectedProduct) return;
   
-  const pCode = getProp(selectedProduct, ['Product Barcode', 'Barcode', 'الباركود']);
-  const pRef = getProp(selectedProduct, ['Product Ref', 'Ref', 'كود الصنف']);
-  const pName = getProp(selectedProduct, ['Product Name', 'Name', 'اسم الصنف']);
-  const pPrice = getProp(selectedProduct, ['Sales Price', 'Price', 'السعر']);
-  const pQoh = parseFloat(getProp(selectedProduct, ['QoH', 'Quantity', 'الكمية'])) || 0;
+  const pCode = findVal(selectedProduct, ['Product Barcode', 'Barcode', 'الباركود']);
+  const pRef = findVal(selectedProduct, ['Product Ref', 'Ref', 'كود الصنف', 'المرجع', 'كود']);
+  const pName = findVal(selectedProduct, ['Product Name', 'Name', 'اسم الصنف', 'الصنف']);
+  const pPrice = findVal(selectedProduct, ['Sales Price', 'Price', 'السعر', 'سعر البيع', 'سعر']);
+  const pQoh = parseFloat(findVal(selectedProduct, ['QoH', 'Quantity', 'الكمية', 'الرصيد'])) || 0;
   const actualVal = parseFloat(document.getElementById('actual').value) || 0;
 
   inventory[pCode] = {
@@ -287,7 +294,7 @@ window.deleteItem = function(barcode) {
 };
 
 window.editItem = function(barcode) {
-  const prod = database.find(p => String(getProp(p, ['Product Barcode', 'Barcode', 'الباركود'])) === barcode);
+  const prod = database.find(p => String(findVal(p, ['Product Barcode', 'Barcode', 'الباركود'])) === barcode);
   if(prod) selectProduct(prod);
 };
 
@@ -305,7 +312,7 @@ document.getElementById('cameraBtn').onclick = () => {
     { facingMode: "environment" }, 
     config, 
     (decodedText) => {
-      const prod = database.find(p => String(getProp(p, ['Product Barcode', 'Barcode', 'الباركود'])) === decodedText);
+      const prod = database.find(p => String(findVal(p, ['Product Barcode', 'Barcode', 'الباركود'])) === decodedText);
       if(prod) {
         selectProduct(prod);
       } else {
@@ -326,7 +333,6 @@ document.getElementById('stopBtn').onclick = () => {
   }
 };
 
-// تصدير الخانات المطلوبة بالدقة
 document.getElementById('exportBtn').onclick = () => {
   const data = Object.keys(inventory).map(barcode => ({
     'Product Ref': inventory[barcode].ref,
