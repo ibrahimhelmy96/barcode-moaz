@@ -1,2032 +1,329 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>طباعة باركود صيدلية معاذ</title>
-
-  <!-- Excel -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-  <!-- Camera Scanner -->
-  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-
-  <!-- Barcode -->
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      font-family: Tahoma, Arial, sans-serif;
-      background: #f3f5f7;
-      color: #17202a;
-    }
-
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 18px;
-    }
-
-    h1 {
-      margin: 0 0 4px;
-      font-size: 27px;
-    }
-
-    .creator {
-      color: #667085;
-      font-size: 13px;
-      margin-bottom: 5px;
-    }
-
-    .subtitle {
-      color: #667085;
-      margin-bottom: 18px;
-    }
-
-    .card {
-      background: white;
-      border-radius: 14px;
-      padding: 18px;
-      margin-bottom: 16px;
-      box-shadow: 0 2px 12px rgba(0,0,0,.06);
-    }
-
-    .row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-
-    input[type="file"] {
-      width: 100%;
-      padding: 12px;
-      border: 1px dashed #98a2b3;
-      border-radius: 10px;
-      background: #fafafa;
-    }
-
-    input[type="text"] {
-      flex: 1;
-      min-width: 220px;
-      padding: 13px;
-      border: 1px solid #cfd5dc;
-      border-radius: 10px;
-      font-size: 17px;
-      direction: ltr;
-    }
-
-    button {
-      border: 0;
-      border-radius: 10px;
-      padding: 12px 18px;
-      font-size: 16px;
-      cursor: pointer;
-      background: #1769e0;
-      color: white;
-    }
-
-    button.secondary {
-      background: #667085;
-    }
-
-    button.success {
-      background: #16834b;
-    }
-
-    button.danger {
-      background: #c62828;
-    }
-
-    button.warning {
-      background: #b7791f;
-    }
-
-    button:disabled {
-      opacity: .5;
-      cursor: not-allowed;
-    }
-
-    .status {
-      margin-top: 10px;
-      padding: 10px 12px;
-      border-radius: 9px;
-      background: #eef4ff;
-      color: #2456a6;
-      line-height: 1.6;
-    }
-
-    .product {
-      display: none;
-      border: 2px solid #d9e2ec;
-      border-radius: 14px;
-      padding: 18px;
-      margin-top: 15px;
-    }
-
-    .product.show {
-      display: block;
-    }
-
-    .product-name {
-      font-size: 24px;
-      font-weight: 700;
-      line-height: 1.5;
-      margin-bottom: 5px;
-    }
-
-    .product-ref {
-      color: #667085;
-      font-size: 14px;
-      margin-bottom: 8px;
-    }
-
-    .price {
-      font-size: 30px;
-      font-weight: 800;
-      margin: 8px 0 12px;
-    }
-
-    .tax-note {
-      font-size: 13px;
-      font-weight: 400;
-      color: #667085;
-      margin-right: 5px;
-    }
-
-    .barcode-wrap {
-      text-align: center;
-      overflow: hidden;
-      padding: 8px;
-    }
-
-    #barcodePreview {
-      max-width: 100%;
-      height: 75px;
-    }
-
-    .code-text {
-      direction: ltr;
-      font-family: monospace;
-      font-size: 15px;
-      margin-top: 3px;
-    }
-
-    #reader {
-      width: 100%;
-      max-width: 520px;
-      margin: 15px auto 0;
-      display: none;
-    }
-
-    .hint {
-      color: #667085;
-      font-size: 14px;
-      line-height: 1.7;
-    }
-
-    .stats {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 12px;
-    }
-
-    .stat {
-      background: #f5f7fa;
-      border-radius: 9px;
-      padding: 9px 13px;
-    }
-
-    .duplicate-list {
-      margin-top: 10px;
-      display: none;
-    }
-
-    .duplicate-item {
-      display: block;
-      width: 100%;
-      text-align: right;
-      margin: 7px 0;
-      background: #f5f7fa;
-      color: #17202a;
-      border: 1px solid #d8dee6;
-    }
-
-    /* =========================
-       قائمة الملصقات المنتظرة
-       ========================= */
-
-    #printQueueCard {
-      display: none;
-    }
-
-    .queue-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 12px;
-    }
-
-    .queue-header h2 {
-      margin: 0;
-    }
-
-    .queue-count {
-      background: #eef4ff;
-      color: #2456a6;
-      border-radius: 20px;
-      padding: 7px 12px;
-      font-size: 14px;
-    }
-
-    .queue-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      background: #f7f8fa;
-      border: 1px solid #dce1e7;
-      border-radius: 10px;
-      padding: 10px 12px;
-      margin-bottom: 8px;
-    }
-
-    .queue-info {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .queue-name {
-      font-weight: 700;
-      line-height: 1.5;
-    }
-
-    .queue-details {
-      color: #667085;
-      font-size: 13px;
-      margin-top: 3px;
-      direction: ltr;
-      text-align: right;
-    }
-
-    .queue-remove {
-      background: #c62828;
-      padding: 7px 11px;
-      font-size: 13px;
-      flex-shrink: 0;
-    }
-
-    .queue-buttons {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 14px;
-    }
-
-    /* =========================
-       منطقة الطباعة
-       ========================= */
-
-    #printArea {
-      display: none;
-    }
-
-    /* =========================
-       PRINT
-       ========================= */
-
-    @media print {
-
-      @page {
-        size: 80mm auto;
-        margin: 0;
-      }
-
-      html,
-      body {
-        width: 80mm;
-        margin: 0;
-        padding: 0;
-        background: white;
-      }
-
-      body > * {
-        display: none !important;
-      }
-
-      #printArea {
-        display: block !important;
-        width: 80mm;
-        margin: 0;
-        padding: 0;
-        text-align: center;
-        direction: rtl;
-        font-family: Tahoma, Arial, sans-serif;
-      }
-
-      /*
-        كل صنف = ملصق مستقل
-      */
-
-      .print-label {
-        width: 72mm;
-        margin: 0 auto;
-        padding: 2mm 0 3mm;
-        text-align: center;
-        page-break-after: always;
-        break-after: page;
-      }
-
-      .print-label:last-child {
-        page-break-after: auto;
-        break-after: auto;
-      }
-
-      .p-name {
-        font-size: 15px;
-        font-weight: 700;
-        line-height: 1.25;
-        max-height: 12mm;
-        overflow: hidden;
-      }
-
-      .p-ref {
-        font-size: 9px;
-        color: #444;
-        margin-top: 0.5mm;
-        direction: ltr;
-      }
-
-      .p-price {
-        font-size: 19px;
-        font-weight: 800;
-        margin: 1mm 0;
-      }
-
-      .p-tax {
-        font-size: 8px;
-        font-weight: 400;
-        color: #444;
-        margin-right: 1mm;
-      }
-
-      /*
-        حجم الباركود حوالي نصف الحجم السابق
-      */
-
-      .p-barcode {
-        width: 34mm;
-        height: 10mm;
-        display: block;
-        margin: 1mm auto 0;
-      }
-
-      .p-code {
-        direction: ltr;
-        font-family: monospace;
-        font-size: 8px;
-        margin-top: 0.5mm;
-      }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>جرد صيدلية معاذ</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Tahoma,sans-serif;background:#f5f7fa;color:#18212b}
+header{background:#0f766e;color:white;padding:18px 16px;position:sticky;top:0;z-index:5}
+h1{font-size:22px;margin:0 0 2px}
+.sub{opacity:.9;font-size:13px}
+.doctor-name{font-size:14px;font-weight:normal;opacity:.95;margin-top:2px}
+main{max-width:900px;margin:auto;padding:14px}
+.card{background:white;border-radius:16px;padding:15px;margin-bottom:14px;box-shadow:0 2px 12px #00000010}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>*{flex:1;min-width:140px}
+button,input{font:inherit;border-radius:11px;border:1px solid #d4dbe2;padding:12px}
+button{cursor:pointer;border:0;background:#0f766e;color:white;font-weight:bold}
+button.secondary{background:#e8eef2;color:#1d2a33}
+button.danger{background:#b42318;color:white}
+input{width:100%;background:white}
+.big{font-size:20px}
+label{display:block;font-size:13px;margin:6px 0;color:#52606d}
+#reader{width:100%;border-radius:14px;overflow:hidden;background:#000;margin-top:10px;display:none}
+.stat{display:flex;gap:8px;flex-wrap:wrap}
+.stat div{flex:1;min-width:110px;background:#f1f5f9;border-radius:12px;padding:10px;text-align:center}
+.stat b{display:block;font-size:22px;margin-top:4px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:9px;border-bottom:1px solid #e5e7eb;text-align:right}
+.short{color:#b42318;font-weight:bold}
+.over{color:#067647;font-weight:bold}
+.notice{font-size:13px;color:#52606d;line-height:1.6}
+.hidden{display:none}
+.search-results{position:relative}
+.search-dropdown{position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #d4dbe2;border-radius:11px;max-height:200px;overflow-y:auto;z-index:10;box-shadow:0 4px 12px #00000015}
+.search-item{padding:10px;cursor:pointer;border-bottom:1px solid #f0f0f0}
+.search-item:hover{background:#f5f7fa}
+.action-btn{padding:4px 8px;border-radius:6px;font-size:12px;margin-left:4px}
+</style>
 </head>
-
-
 <body>
 
-<main class="container">
+<header>
+  <h1>🏥 جرد صيدلية معاذ</h1>
+  <div class="doctor-name">د / إبراهيم حلمي</div>
+  <div class="sub" style="margin-top: 4px;">باركود USB أو كاميرا الموبايل • البيانات محليًا على الجهاز</div>
+</header>
 
-  <!-- =========================
-       العنوان
-       ========================= -->
-
-  <div class="card">
-
-    <h1>🏷️ طباعة باركود الصيدلية</h1>
-
-    <div class="creator">
-      إبراهيم حلمي — صيدلية معاذ
+<main>
+<section class="card">
+  <div class="row">
+    <div>
+      <label>رفع ملف Excel البيانات</label>
+      <input id="file" type="file" accept=".xlsx,.xls,.csv">
     </div>
-
-    <div class="subtitle">
-      ارفع مخزون Excel ثم امسح الباركود لإظهار الصنف وسعره.
+    <div class="search-results">
+      <label>بحث يدوي مرن (Fuzzy Search)</label>
+      <input id="search" placeholder="اكتب اسم المنتج أو جزء منه...">
+      <div id="dropdown" class="search-dropdown hidden"></div>
     </div>
-
-    <input
-      id="excelFile"
-      type="file"
-      accept=".xlsx,.xls,.csv"
-    >
-
-    <div id="status" class="status">
-      لم يتم تحميل ملف المخزون بعد.
-    </div>
-
-    <div id="stats" class="stats"></div>
-
   </div>
+</section>
 
-
-  <!-- =========================
-       البحث والمسح
-       ========================= -->
-
-  <div class="card">
-
-    <h2>🔎 البحث / قراءة الكود</h2>
-
-    <div class="row">
-
-      <input
-        id="codeInput"
-        type="text"
-        placeholder="امسح الباركود بالماسح أو اكتب الرقم هنا"
-        autocomplete="off"
-      >
-
-      <button id="searchBtn">
-        بحث
-      </button>
-
-      <button id="scanBtn" class="success">
-        📷 فتح الكاميرا
-      </button>
-
-    </div>
-
-    <div class="hint">
-      لو عندك Barcode Scanner USB، وصّله بالكمبيوتر واضغط داخل الخانة ثم امسح الأكواد واحدًا وراء الآخر.
-      كل Scan سيتم إضافته لقائمة الطباعة.
-    </div>
-
-    <div id="reader"></div>
-
-
-    <!-- =========================
-         بيانات الصنف الحالي
-         ========================= -->
-
-    <div id="productCard" class="product">
-
-      <div id="productName" class="product-name"></div>
-
-      <div id="productRef" class="product-ref"></div>
-
-      <div id="productPrice" class="price"></div>
-
-      <div class="barcode-wrap">
-
-        <svg id="barcodePreview"></svg>
-
-        <div id="codeText" class="code-text"></div>
-
-      </div>
-
-      <div class="row">
-
-        <button id="addPrintBtn" class="success">
-          ➕ إضافة للطباعة
-        </button>
-
-        <button id="printBtn" class="success">
-          🖨️ طباعة الآن
-        </button>
-
-        <button id="clearBtn" class="secondary">
-          مسح
-        </button>
-
-      </div>
-
-    </div>
-
-
-    <!-- الأصناف ذات الباركود المكرر في Excel -->
-
-    <div id="duplicates" class="duplicate-list"></div>
-
+<section class="card">
+  <div class="row">
+    <button id="cameraBtn">📷 تشغيل الكاميرا الخلفية</button>
+    <button class="secondary" id="stopBtn">إيقاف الكاميرا</button>
   </div>
+  <div id="reader"></div>
+  <label style="margin-top:12px;">الباركود (جهاز Scanner USB أو إدخال يدوي)</label>
+  <input id="barcode" class="big" autofocus inputmode="numeric" placeholder="اعمل Scan بالماسح هنا">
+</section>
 
-
-  <!-- =========================
-       قائمة الطباعة
-       ========================= -->
-
-  <div id="printQueueCard" class="card">
-
-    <div class="queue-header">
-
-      <h2>🖨️ قائمة الطباعة</h2>
-
-      <div id="queueCount" class="queue-count">
-        0 ملصق
-      </div>
-
+<section class="card">
+  <h3>الصنف المحدد</h3>
+  <div id="productInfo" class="notice">قم بمسح الباركود أو ابحث عن الصنف لبدء الجرد.</div>
+  <div id="countArea" class="hidden">
+    <label>الكمية الفعلية</label>
+    <input id="actual" class="big" type="number" min="0" step="1" placeholder="مثال: 12">
+    <div class="row" style="margin-top:8px">
+      <button id="addBtn">✅ حفظ الجرد للصنف</button>
+      <button class="secondary" id="plusBtn">+1 زيادة</button>
     </div>
-
-    <div id="printQueue"></div>
-
-    <div class="queue-buttons">
-
-      <button
-        id="printAllBtn"
-        class="success"
-      >
-        🖨️ طباعة الكل
-      </button>
-
-      <button
-        id="clearQueueBtn"
-        class="danger"
-      >
-        🗑️ مسح القائمة
-      </button>
-
-    </div>
-
   </div>
+</section>
 
+<section class="card">
+  <div class="stat">
+    <div>تم جرده<b id="done">0</b></div>
+    <div>العجز<b id="shortage">0</b></div>
+    <div>الزيادة<b id="over">0</b></div>
+    <div>إجمالي الأصناف<b id="total">0</b></div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="row">
+    <button id="exportBtn">📥 تصدير ملف Excel للنتيجة</button>
+    <button class="secondary" id="clearBtn">مسح بيانات الجرد</button>
+  </div>
+  <div style="overflow:auto;margin-top:12px">
+    <table>
+      <thead>
+        <tr>
+          <th>الباركود</th>
+          <th>الصنف</th>
+          <th>السيستم</th>
+          <th>الفعلي</th>
+          <th>الفرق</th>
+          <th>خيارات</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</section>
 </main>
 
-
-<!-- =========================
-     منطقة الطباعة
-     ========================= -->
-
-<div id="printArea"></div>
-
-
 <script>
+let database = [];
+let inventory = {};
+let selectedProduct = null;
+let html5QrCode = null;
+let fuse = null;
 
-  let inventory = [];
+function initFuse() {
+  fuse = new Fuse(database, {
+    keys: ['Product Name', 'Product Barcode'],
+    threshold: 0.4,
+    distance: 100
+  });
+}
 
-  let currentProduct = null;
+function updateStats() {
+  const keys = Object.keys(inventory);
+  let done = keys.length;
+  let shortage = 0;
+  let over = 0;
+  
+  keys.forEach(k => {
+    let diff = inventory[k].actual - inventory[k].system;
+    if(diff < 0) shortage += Math.abs(diff);
+    if(diff > 0) over += diff;
+  });
 
-  let scanner = null;
+  document.getElementById('done').innerText = done;
+  document.getElementById('shortage').innerText = shortage;
+  document.getElementById('over').innerText = over;
+  document.getElementById('total').innerText = database.length;
+}
 
-  /*
-    هنا بنخزن كل الأصناف التي تم Scan لها
-    وكل Scan = ملصق واحد
-  */
+function renderTable() {
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  Object.keys(inventory).forEach(barcode => {
+    const item = inventory[barcode];
+    const diff = item.actual - item.system;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${barcode}</td>
+      <td>${item.name}</td>
+      <td>${item.system}</td>
+      <td>${item.actual}</td>
+      <td class="${diff < 0 ? 'short' : (diff > 0 ? 'over' : '')}">${diff}</td>
+      <td>
+        <button class="action-btn secondary" onclick="editItem('${barcode}')">✏️ تعديل</button>
+        <button class="action-btn danger" onclick="deleteItem('${barcode}')">🗑️ مسح</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+  updateStats();
+}
 
-  let printQueue = [];
+function selectProduct(product) {
+  selectedProduct = product;
+  document.getElementById('productInfo').innerHTML = `<b>${product['Product Name']}</b><br>الباركود: ${product['Product Barcode']} | السعر: ${product['Sales Price'] || 0} | الكمية بالسيستم: ${product['QoH'] || 0}`;
+  document.getElementById('countArea').classList.remove('hidden');
+  document.getElementById('actual').value = (inventory[product['Product Barcode']] ? inventory[product['Product Barcode']].actual : (product['QoH'] || 0));
+  document.getElementById('dropdown').classList.add('hidden');
+  document.getElementById('actual').focus();
+}
 
-  /*
-    منع تكرار نفس قراءة الكاميرا عشرات المرات
-  */
+document.getElementById('file').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    const bstr = evt.target.result;
+    const wb = XLSX.read(bstr, { type: 'binary' });
+    const wsname = wb.SheetNames[0];
+    database = XLSX.utils.sheet_to_json(wb.Sheets[wsname]);
+    initFuse();
+    updateStats();
+    alert('تم تحميل البيانات بنجاح! عدد الأصناف: ' + database.length);
+  };
+  reader.readAsBinaryString(file);
+});
 
-  let lastScannedCode = "";
+document.getElementById('search').addEventListener('input', (e) => {
+  const val = e.target.value.trim();
+  const dropdown = document.getElementById('dropdown');
+  if(!val || !fuse) {
+    dropdown.classList.add('hidden');
+    return;
+  }
+  const results = fuse.search(val);
+  dropdown.innerHTML = '';
+  if(results.length > 0) {
+    dropdown.classList.remove('hidden');
+    results.slice(0, 8).forEach(res => {
+      const div = document.createElement('div');
+      div.className = 'search-item';
+      div.innerText = `${res.item['Product Name']} (${res.item['Product Barcode']})`;
+      div.onclick = () => selectProduct(res.item);
+      dropdown.appendChild(div);
+    });
+  } else {
+    dropdown.classList.add('hidden');
+  }
+});
 
-  let lastScanTime = 0;
+document.getElementById('barcode').addEventListener('change', (e) => {
+  const code = e.target.value.trim();
+  const prod = database.find(p => String(p['Product Barcode']) === code);
+  if(prod) {
+    selectProduct(prod);
+  } else {
+    alert('الصنف غير موجود بالملف المرفوع');
+  }
+  e.target.value = '';
+});
 
+document.getElementById('addBtn').onclick = () => {
+  if(!selectedProduct) return;
+  const actualVal = parseFloat(document.getElementById('actual').value) || 0;
+  inventory[selectedProduct['Product Barcode']] = {
+    ref: selectedProduct['Product Ref'] || '',
+    name: selectedProduct['Product Name'],
+    price: selectedProduct['Sales Price'] || 0,
+    system: selectedProduct['QoH'] || 0,
+    actual: actualVal
+  };
+  renderTable();
+  document.getElementById('countArea').classList.add('hidden');
+  document.getElementById('productInfo').innerText = 'تم حفظ الجرد بنجاح!';
+};
 
-  const $ = id => document.getElementById(id);
+document.getElementById('plusBtn').onclick = () => {
+  const input = document.getElementById('actual');
+  input.value = (parseFloat(input.value) || 0) + 1;
+};
 
+window.deleteItem = function(barcode) {
+  if(confirm('هل أنت تأكد من مسح هذا الصنف؟')) {
+    delete inventory[barcode];
+    renderTable();
+  }
+};
 
-  /* =========================
-     الحالة
-     ========================= */
+window.editItem = function(barcode) {
+  const prod = database.find(p => String(p['Product Barcode']) === barcode);
+  if(prod) selectProduct(prod);
+};
 
-  function setStatus(message, type = "info") {
-
-    $("status").textContent = message;
-
-    $("status").style.background =
-      type === "error"
-        ? "#fff0f0"
-        : type === "success"
-          ? "#edf9f1"
-          : "#eef4ff";
-
-    $("status").style.color =
-      type === "error"
-        ? "#a61b1b"
-        : type === "success"
-          ? "#126b3c"
-          : "#2456a6";
+document.getElementById('cameraBtn').onclick = () => {
+  const readerEl = document.getElementById('reader');
+  readerEl.style.display = 'block';
+  
+  if(!html5QrCode) {
+    html5QrCode = new Html5Qrcode("reader");
   }
 
-
-  /* =========================
-     تنظيف البيانات
-     ========================= */
-
-  function normalize(value) {
-
-    if (value === null || value === undefined) {
-      return "";
-    }
-
-    return String(value)
-      .trim()
-      .replace(/\.0$/, "");
-  }
-
-
-  /* =========================
-     البحث عن العمود
-     ========================= */
-
-  function findColumn(headers, names) {
-
-    const lower = headers.map(h =>
-      normalize(h).toLowerCase()
-    );
-
-    for (const name of names) {
-
-      const i = lower.indexOf(
-        name.toLowerCase()
-      );
-
-      if (i !== -1) {
-        return i;
+  const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+  
+  html5QrCode.start(
+    { facingMode: "environment" }, 
+    config, 
+    (decodedText) => {
+      const prod = database.find(p => String(p['Product Barcode']) === decodedText);
+      if(prod) {
+        selectProduct(prod);
+      } else {
+        alert('باركود غير موجود: ' + decodedText);
       }
-    }
+    },
+    (errorMessage) => {}
+  ).catch(err => {
+    alert("تعذر الوصول للكاميرا: " + err);
+  });
+};
 
-    return -1;
+document.getElementById('stopBtn').onclick = () => {
+  if(html5QrCode) {
+    html5QrCode.stop().then(() => {
+      document.getElementById('reader').style.display = 'none';
+    }).catch(err => console.log(err));
   }
+};
 
+// التعديل هنا لتصدير Product Ref و Sales Price بدلاً من الباركود
+document.getElementById('exportBtn').onclick = () => {
+  const data = Object.keys(inventory).map(barcode => ({
+    'Product Ref': inventory[barcode].ref,
+    'اسم الصنف': inventory[barcode].name,
+    'السعر': inventory[barcode].price,
+    'كمية السيستم': inventory[barcode].system,
+    'الكمية الفعلية': inventory[barcode].actual,
+    'الفرق': inventory[barcode].actual - inventory[barcode].system
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "نتائج الجرد");
+  XLSX.writeFile(wb, "تقرير_الجرد.xlsx");
+};
 
-  /* =========================
-     تحديد صف العناوين
-     ========================= */
-
-  function findHeaderRow(rows) {
-
-    for (
-      let i = 0;
-      i < Math.min(rows.length, 30);
-      i++
-    ) {
-
-      const values = rows[i].map(normalize);
-
-      const hasBarcode = values.some(
-        v => v.toLowerCase() === "product barcode"
-      );
-
-      const hasName = values.some(
-        v => v.toLowerCase() === "product name"
-      );
-
-      if (hasBarcode && hasName) {
-        return i;
-      }
-    }
-
-    return -1;
+document.getElementById('clearBtn').onclick = () => {
+  if(confirm('هل تريد مسح جميع نتائج الجرد؟')) {
+    inventory = {};
+    renderTable();
   }
-
-
-  /* =========================
-     تحميل Excel
-     ========================= */
-
-  $("excelFile").addEventListener(
-    "change",
-    async function(e) {
-
-      const file = e.target.files[0];
-
-      if (!file) return;
-
-      try {
-
-        setStatus(
-          "جاري قراءة ملف Excel...",
-          "info"
-        );
-
-        const buffer =
-          await file.arrayBuffer();
-
-        const workbook =
-          XLSX.read(buffer, {
-            type: "array",
-            cellDates: false
-          });
-
-        const sheetName =
-          workbook.SheetNames[0];
-
-        const sheet =
-          workbook.Sheets[sheetName];
-
-        const rows =
-          XLSX.utils.sheet_to_json(
-            sheet,
-            {
-              header: 1,
-              defval: ""
-            }
-          );
-
-        const headerRow =
-          findHeaderRow(rows);
-
-        if (headerRow === -1) {
-
-          throw new Error(
-            "لم أجد أعمدة Product Barcode و Product Name في الملف."
-          );
-
-        }
-
-        const headers =
-          rows[headerRow].map(normalize);
-
-
-        const barcodeCol =
-          findColumn(
-            headers,
-            ["Product Barcode"]
-          );
-
-
-        const nameCol =
-          findColumn(
-            headers,
-            ["Product Name"]
-          );
-
-
-        const priceCol =
-          findColumn(
-            headers,
-            ["Sales Price"]
-          );
-
-
-        const qtyCol =
-          findColumn(
-            headers,
-            ["QoH"]
-          );
-
-
-        const refCol =
-          findColumn(
-            headers,
-            ["Product Ref"]
-          );
-
-
-        inventory = [];
-
-
-        for (
-          let i = headerRow + 1;
-          i < rows.length;
-          i++
-        ) {
-
-          const row = rows[i];
-
-          const barcode =
-            normalize(row[barcodeCol]);
-
-          const name =
-            normalize(row[nameCol]);
-
-          if (!barcode || !name) {
-            continue;
-          }
-
-
-          inventory.push({
-
-            barcode,
-
-            name,
-
-            price:
-              priceCol >= 0
-                ? normalize(row[priceCol])
-                : "",
-
-            qty:
-              qtyCol >= 0
-                ? normalize(row[qtyCol])
-                : "",
-
-            ref:
-              refCol >= 0
-                ? normalize(row[refCol])
-                : ""
-
-          });
-
-        }
-
-
-        /*
-          حفظ المخزون في المتصفح
-        */
-
-        try {
-
-          localStorage.setItem(
-            "pharmacyInventory",
-            JSON.stringify(inventory)
-          );
-
-          localStorage.setItem(
-            "pharmacyInventoryDate",
-            new Date().toISOString()
-          );
-
-        } catch(e) {}
-
-
-        $("stats").innerHTML = `
-
-          <div class="stat">
-            📦 الأصناف ذات الباركود:
-            <b>${inventory.length.toLocaleString()}</b>
-          </div>
-
-          <div class="stat">
-            📄 الورقة:
-            <b>${sheetName}</b>
-          </div>
-
-        `;
-
-
-        setStatus(
-          `تم تحميل المخزون بنجاح: ${inventory.length.toLocaleString()} صنف.`,
-          "success"
-        );
-
-      }
-
-      catch (err) {
-
-        console.error(err);
-
-        setStatus(
-          "حصل خطأ أثناء قراءة الملف: " +
-          err.message,
-          "error"
-        );
-
-      }
-
-    }
-  );
-
-
-  /* =========================
-     استرجاع المخزون المحفوظ
-     ========================= */
-
-  window.addEventListener(
-    "load",
-    () => {
-
-      try {
-
-        const saved =
-          localStorage.getItem(
-            "pharmacyInventory"
-          );
-
-        if (saved) {
-
-          inventory =
-            JSON.parse(saved);
-
-          $("stats").innerHTML = `
-
-            <div class="stat">
-              📦 مخزون محفوظ:
-              <b>${inventory.length.toLocaleString()}</b>
-              صنف
-            </div>
-
-          `;
-
-          setStatus(
-            "تم استرجاع آخر ملف مخزون محفوظ في هذا المتصفح.",
-            "success"
-          );
-
-        }
-
-      }
-
-      catch(e) {}
-
-      $("codeInput").focus();
-
-    }
-  );
-
-
-  /* =========================
-     البحث عن باركود
-     ========================= */
-
-  function searchCode(code) {
-
-    code = normalize(code);
-
-    if (!code) {
-      return;
-    }
-
-
-    $("duplicates").style.display =
-      "none";
-
-    $("duplicates").innerHTML = "";
-
-
-    const matches =
-      inventory.filter(
-        x => x.barcode === code
-      );
-
-
-    if (matches.length === 0) {
-
-      currentProduct = null;
-
-      $("productCard")
-        .classList.remove("show");
-
-      setStatus(
-        `لم يتم العثور على باركود: ${code}`,
-        "error"
-      );
-
-      return;
-
-    }
-
-
-    /*
-      لو فيه أكتر من صنف بنفس الباركود
-    */
-
-    if (matches.length > 1) {
-
-      $("duplicates").style.display =
-        "block";
-
-      $("duplicates").innerHTML =
-        `<b>
-          ⚠️ يوجد أكثر من صنف بنفس الباركود
-          (${matches.length}).
-          اختر الصنف:
-        </b>`;
-
-
-      matches.forEach(
-        (item, index) => {
-
-          const btn =
-            document.createElement(
-              "button"
-            );
-
-          btn.className =
-            "duplicate-item";
-
-          btn.textContent =
-            `${index + 1}) ${item.name} — ${
-              item.price || "-"
-            } ريال`;
-
-          btn.onclick = () =>
-            showProduct(item);
-
-          $("duplicates")
-            .appendChild(btn);
-
-        }
-      );
-
-    }
-
-
-    showProduct(matches[0]);
-
-  }
-
-
-  /* =========================
-     عرض الصنف
-     ========================= */
-
-  function showProduct(item) {
-
-    currentProduct = item;
-
-
-    $("productName").textContent =
-      item.name;
-
-
-    /*
-      إظهار Product Ref
-    */
-
-    $("productRef").textContent =
-      item.ref
-        ? `الكود: ${item.ref}`
-        : "الكود: غير موجود";
-
-
-    /*
-      السعر + شامل الضريبة
-    */
-
-    $("productPrice").innerHTML =
-      item.price
-        ? `${item.price} ريال
-           <span class="tax-note">
-             (شامل الضريبة)
-           </span>`
-        : `السعر غير موجود`;
-
-
-    $("codeText").textContent =
-      item.barcode;
-
-
-    $("productCard")
-      .classList.add("show");
-
-
-    drawBarcode(
-      "barcodePreview",
-      item.barcode
-    );
-
-
-    setStatus(
-      `تم العثور على: ${item.name}`,
-      "success"
-    );
-
-  }
-
-
-  /* =========================
-     رسم الباركود
-     ========================= */
-
-  function drawBarcode(
-    elementId,
-    value
-  ) {
-
-    const el =
-      document.getElementById(
-        elementId
-      );
-
-    el.innerHTML = "";
-
-
-    let format = "CODE128";
-
-
-    if (/^\d{13}$/.test(value)) {
-
-      format = "EAN13";
-
-    }
-
-    else if (/^\d{8}$/.test(value)) {
-
-      format = "EAN8";
-
-    }
-
-    else if (/^\d{12}$/.test(value)) {
-
-      format = "UPC";
-
-    }
-
-
-    try {
-
-      JsBarcode(
-        el,
-        value,
-        {
-
-          format,
-
-          displayValue: false,
-
-          margin: 2,
-
-          height: 55,
-
-          width: 1.7
-
-        }
-      );
-
-    }
-
-    catch (e) {
-
-      /*
-        fallback إلى Code128
-      */
-
-      JsBarcode(
-        el,
-        value,
-        {
-
-          format: "CODE128",
-
-          displayValue: false,
-
-          margin: 2,
-
-          height: 55,
-
-          width: 1.7
-
-        }
-      );
-
-    }
-
-  }
-
-
-  /* =========================
-     زر البحث
-     ========================= */
-
-  $("searchBtn").addEventListener(
-    "click",
-    () => {
-
-      searchCode(
-        $("codeInput").value
-      );
-
-    }
-  );
-
-
-  /* =========================
-     USB Barcode Scanner
-     ========================= */
-
-  $("codeInput").addEventListener(
-    "keydown",
-    e => {
-
-      if (e.key === "Enter") {
-
-        e.preventDefault();
-
-        searchCode(
-          $("codeInput").value
-        );
-
-      }
-
-    }
-  );
-
-
-  /*
-    بعد إدخال الباركود بالـ Scanner
-    نجهزه للـ Scan التالي
-  */
-
-  $("codeInput").addEventListener(
-    "keyup",
-    e => {
-
-      if (e.key === "Enter") {
-
-        setTimeout(
-          () => {
-
-            $("codeInput").select();
-
-          },
-          50
-        );
-
-      }
-
-    }
-  );
-
-
-  /* =========================
-     مسح الصنف الحالي
-     ========================= */
-
-  $("clearBtn").addEventListener(
-    "click",
-    () => {
-
-      currentProduct = null;
-
-      $("codeInput").value = "";
-
-      $("productCard")
-        .classList.remove("show");
-
-      $("duplicates").style.display =
-        "none";
-
-      setStatus(
-        "جاهز لقراءة باركود جديد."
-      );
-
-      $("codeInput").focus();
-
-    }
-  );
-
-
-  /* =========================
-     إضافة الصنف لقائمة الطباعة
-     ========================= */
-
-  function addToPrintQueue(item) {
-
-    if (!item) {
-      return;
-    }
-
-
-    /*
-      نضيف نسخة جديدة حتى لو نفس الصنف
-      اتعمله Scan أكثر من مرة
-    */
-
-    printQueue.push(item);
-
-
-    updatePrintQueue();
-
-
-    setStatus(
-      `تمت إضافة "${item.name}" لقائمة الطباعة.`,
-      "success"
-    );
-
-  }
-
-
-  /* =========================
-     زر إضافة للطباعة
-     ========================= */
-
-  $("addPrintBtn").addEventListener(
-    "click",
-    () => {
-
-      if (!currentProduct) {
-        return;
-      }
-
-      addToPrintQueue(
-        currentProduct
-      );
-
-      $("codeInput").value = "";
-
-      $("productCard")
-        .classList.remove("show");
-
-      $("codeInput").focus();
-
-    }
-  );
-
-
-  /* =========================
-     تحديث قائمة الطباعة
-     ========================= */
-
-  function updatePrintQueue() {
-
-    const card =
-      $("printQueueCard");
-
-    const list =
-      $("printQueue");
-
-
-    if (printQueue.length === 0) {
-
-      card.style.display =
-        "none";
-
-      list.innerHTML = "";
-
-      return;
-
-    }
-
-
-    card.style.display =
-      "block";
-
-
-    $("queueCount").textContent =
-      `${printQueue.length} ملصق`;
-
-
-    list.innerHTML = "";
-
-
-    printQueue.forEach(
-      (item, index) => {
-
-        const div =
-          document.createElement(
-            "div"
-          );
-
-        div.className =
-          "queue-item";
-
-
-        div.innerHTML = `
-
-          <div class="queue-info">
-
-            <div class="queue-name">
-              ${index + 1}) ${escapeHtml(item.name)}
-            </div>
-
-            <div class="queue-details">
-              Barcode: ${escapeHtml(item.barcode)}
-              ${
-                item.ref
-                  ? ` | Ref: ${escapeHtml(item.ref)}`
-                  : ""
-              }
-              ${
-                item.price
-                  ? ` | ${escapeHtml(item.price)} ريال`
-                  : ""
-              }
-            </div>
-
-          </div>
-
-          <button
-            class="queue-remove"
-            data-index="${index}"
-          >
-            حذف
-          </button>
-
-        `;
-
-
-        div.querySelector(
-          ".queue-remove"
-        ).addEventListener(
-          "click",
-          () => {
-
-            printQueue.splice(
-              index,
-              1
-            );
-
-            updatePrintQueue();
-
-          }
-        );
-
-
-        list.appendChild(div);
-
-      }
-    );
-
-  }
-
-
-  /* =========================
-     حماية عرض النصوص
-     ========================= */
-
-  function escapeHtml(value) {
-
-    return String(value)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-
-  }
-
-
-  /* =========================
-     مسح قائمة الطباعة
-     ========================= */
-
-  $("clearQueueBtn").addEventListener(
-    "click",
-    () => {
-
-      if (printQueue.length === 0) {
-        return;
-      }
-
-
-      const confirmed =
-        confirm(
-          "هل تريد مسح كل الملصقات من قائمة الطباعة؟"
-        );
-
-
-      if (!confirmed) {
-        return;
-      }
-
-
-      printQueue = [];
-
-      updatePrintQueue();
-
-      setStatus(
-        "تم مسح قائمة الطباعة."
-      );
-
-      $("codeInput").focus();
-
-    }
-  );
-
-
-  /* =========================
-     تجهيز ملصق للطباعة
-     ========================= */
-
-  function createPrintLabel(
-    item,
-    index
-  ) {
-
-    const label =
-      document.createElement(
-        "div"
-      );
-
-    label.className =
-      "print-label";
-
-
-    const name =
-      document.createElement(
-        "div"
-      );
-
-    name.className =
-      "p-name";
-
-    name.textContent =
-      item.name;
-
-
-    const ref =
-      document.createElement(
-        "div"
-      );
-
-    ref.className =
-      "p-ref";
-
-    ref.textContent =
-      item.ref
-        ? `Ref: ${item.ref}`
-        : "";
-
-
-    const price =
-      document.createElement(
-        "div"
-      );
-
-    price.className =
-      "p-price";
-
-    if (item.price) {
-
-      price.innerHTML =
-        `${escapeHtml(item.price)}
-         ريال
-         <span class="p-tax">
-           (شامل الضريبة)
-         </span>`;
-
-    }
-
-
-    const barcode =
-      document.createElement(
-        "svg"
-      );
-
-    barcode.className =
-      "p-barcode";
-
-
-    const code =
-      document.createElement(
-        "div"
-      );
-
-    code.className =
-      "p-code";
-
-    code.textContent =
-      item.barcode;
-
-
-    label.appendChild(name);
-
-    if (item.ref) {
-      label.appendChild(ref);
-    }
-
-    label.appendChild(price);
-
-    label.appendChild(barcode);
-
-    label.appendChild(code);
-
-
-    /*
-      رسم الباركود بعد إضافته
-    */
-
-    setTimeout(
-      () => {
-
-        drawBarcodeElement(
-          barcode,
-          item.barcode
-        );
-
-      },
-      0
-    );
-
-
-    return label;
-
-  }
-
-
-  /* =========================
-     رسم Barcode على عنصر SVG
-     ========================= */
-
-  function drawBarcodeElement(
-    el,
-    value
-  ) {
-
-    el.innerHTML = "";
-
-
-    let format =
-      "CODE128";
-
-
-    if (/^\d{13}$/.test(value)) {
-
-      format = "EAN13";
-
-    }
-
-    else if (/^\d{8}$/.test(value)) {
-
-      format = "EAN8";
-
-    }
-
-    else if (/^\d{12}$/.test(value)) {
-
-      format = "UPC";
-
-    }
-
-
-    try {
-
-      JsBarcode(
-        el,
-        value,
-        {
-
-          format,
-
-          displayValue: false,
-
-          margin: 1,
-
-          height: 35,
-
-          width: 1.2
-
-        }
-      );
-
-    }
-
-    catch(e) {
-
-      JsBarcode(
-        el,
-        value,
-        {
-
-          format: "CODE128",
-
-          displayValue: false,
-
-          margin: 1,
-
-          height: 35,
-
-          width: 1.2
-
-        }
-      );
-
-    }
-
-  }
-
-
-  /* =========================
-     طباعة الكل
-     ========================= */
-
-  function prepareAndPrintQueue() {
-
-    if (printQueue.length === 0) {
-
-      alert(
-        "قائمة الطباعة فارغة."
-      );
-
-      return;
-
-    }
-
-
-    const printArea =
-      $("printArea");
-
-
-    printArea.innerHTML = "";
-
-
-    printQueue.forEach(
-      (item, index) => {
-
-        const label =
-          createPrintLabel(
-            item,
-            index
-          );
-
-        printArea.appendChild(
-          label
-        );
-
-      }
-    );
-
-
-    /*
-      ننتظر رسم كل الباركودات
-      ثم نفتح نافذة الطباعة
-    */
-
-    setTimeout(
-      () => {
-
-        window.print();
-
-      },
-      300
-    );
-
-  }
-
-
-  $("printAllBtn").addEventListener(
-    "click",
-    prepareAndPrintQueue
-  );
-
-
-  /* =========================
-     طباعة الصنف الحالي فقط
-     ========================= */
-
-  $("printBtn").addEventListener(
-    "click",
-    () => {
-
-      if (!currentProduct) {
-        return;
-      }
-
-
-      /*
-        نطبع الصنف الحالي فقط
-        بدون إضافته للقائمة
-      */
-
-      const printArea =
-        $("printArea");
-
-
-      printArea.innerHTML = "";
-
-
-      const label =
-        createPrintLabel(
-          currentProduct,
-          0
-        );
-
-
-      printArea.appendChild(
-        label
-      );
-
-
-      setTimeout(
-        () => {
-
-          window.print();
-
-        },
-        300
-      );
-
-    }
-  );
-
-
-  /* =========================
-     الكاميرا
-     ========================= */
-
-  async function startScanner() {
-
-    if (scanner) {
-      return;
-    }
-
-
-    $("reader").style.display =
-      "block";
-
-
-    $("scanBtn").disabled =
-      true;
-
-
-    $("scanBtn").textContent =
-      "📷 الكاميرا تعمل...";
-
-
-    scanner =
-      new Html5Qrcode(
-        "reader"
-      );
-
-
-    try {
-
-      await scanner.start(
-
-        {
-          facingMode:
-            "environment"
-        },
-
-        {
-          fps: 10,
-
-          qrbox: {
-            width: 280,
-            height: 160
-          },
-
-          aspectRatio:
-            1.777778
-        },
-
-        decodedText => {
-
-          handleCameraScan(
-            decodedText
-          );
-
-        },
-
-        () => {}
-
-      );
-
-    }
-
-    catch(err) {
-
-      console.error(err);
-
-      setStatus(
-        "لم أستطع تشغيل الكاميرا. تأكد من السماح للمتصفح باستخدام الكاميرا وأن الموقع يعمل عبر HTTPS.",
-        "error"
-      );
-
-      stopScanner();
-
-    }
-
-  }
-
-
-  /* =========================
-     معالجة Scan الكاميرا
-     ========================= */
-
-  function handleCameraScan(
-    decodedText
-  ) {
-
-    const code =
-      normalize(decodedText);
-
-
-    if (!code) {
-      return;
-    }
-
-
-    const now =
-      Date.now();
-
-
-    /*
-      منع الكاميرا من تسجيل
-      نفس الباركود عشرات المرات
-      في نفس الثانية
-    */
-
-    if (
-      code === lastScannedCode &&
-      now - lastScanTime < 1500
-    ) {
-
-      return;
-
-    }
-
-
-    lastScannedCode =
-      code;
-
-    lastScanTime =
-      now;
-
-
-    $("codeInput").value =
-      code;
-
-
-    const matches =
-      inventory.filter(
-        x => x.barcode === code
-      );
-
-
-    if (matches.length === 0) {
-
-      setStatus(
-        `لم يتم العثور على باركود: ${code}`,
-        "error"
-      );
-
-      return;
-
-    }
-
-
-    /*
-      في حالة وجود صنف مطابق
-      نضيفه مباشرة لقائمة الطباعة
-    */
-
-    addToPrintQueue(
-      matches[0]
-    );
-
-
-    /*
-      تجهيز المسح التالي
-    */
-
-    $("codeInput").value = "";
-
-  }
-
-
-  /* =========================
-     إيقاف الكاميرا
-     ========================= */
-
-  async function stopScanner() {
-
-    if (!scanner) {
-      return;
-    }
-
-
-    try {
-
-      await scanner.stop();
-
-      await scanner.clear();
-
-    }
-
-    catch(e) {}
-
-
-    scanner = null;
-
-
-    $("reader").style.display =
-      "none";
-
-
-    $("scanBtn").disabled =
-      false;
-
-
-    $("scanBtn").textContent =
-      "📷 فتح الكاميرا";
-
-  }
-
-
-  /* =========================
-     زر الكاميرا
-     ========================= */
-
-  $("scanBtn").addEventListener(
-    "click",
-    () => {
-
-      if (scanner) {
-
-        stopScanner();
-
-      }
-
-      else {
-
-        startScanner();
-
-      }
-
-    }
-  );
-
+};
 </script>
-
 </body>
 </html>
